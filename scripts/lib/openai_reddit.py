@@ -15,39 +15,45 @@ DEPTH_CONFIG = {
     "deep": (50, 70),
 }
 
-REDDIT_SEARCH_PROMPT = """Search Reddit for discussions about: {topic}
+REDDIT_SEARCH_PROMPT = """Search Reddit for DISCUSSION THREADS about: {topic}
 
-Use web search to find {min_items}-{max_items} relevant Reddit threads from the last 30 days.
+SEARCH GUIDANCE:
+- Search for "site:reddit.com/r/ {topic}" to find subreddit discussions
+- Look in subreddits like r/design, r/UI_Design, r/iOSProgramming, r/SwiftUI, r/Figma, r/webdev, r/userexperience, r/graphic_design
+- ONLY include URLs containing "/r/" and "/comments/" (actual discussion threads)
+- IGNORE: developers.reddit.com, business.reddit.com, reddit.com/user/
 
-CRITICAL: After searching, you MUST extract information from the Reddit URLs you found and return them as JSON.
+Find {min_items}-{max_items} relevant Reddit discussion threads. Prefer recent threads, but include older relevant ones if recent ones are scarce.
 
-For EACH Reddit thread URL you find in your search results, extract:
-- The thread title
-- The full Reddit URL
-- The subreddit name
-- Approximate date if visible
-- Why it's relevant to "{topic}"
+CRITICAL: Return ALL discussion threads you find as JSON. Do NOT return errors or empty results.
 
-Return ONLY valid JSON in this exact format:
+For EACH Reddit thread URL (containing /r/subreddit/comments/), extract:
+- Thread title
+- Full Reddit URL
+- Subreddit name
+- Date (if visible, otherwise null)
+- Why it's relevant
+
+Return ONLY valid JSON:
 {{
   "items": [
     {{
-      "title": "Actual thread title from Reddit",
-      "url": "https://www.reddit.com/r/subreddit/comments/...",
+      "title": "Thread title",
+      "url": "https://www.reddit.com/r/subreddit/comments/abc123/title/",
       "subreddit": "subreddit_name",
-      "date": "YYYY-MM-DD or null if unknown",
-      "why_relevant": "Brief explanation of relevance to {topic}",
+      "date": "YYYY-MM-DD or null",
+      "why_relevant": "Relevance to {topic}",
       "relevance": 0.85
     }}
   ]
 }}
 
 Rules:
-- You MUST include threads from the search results - do NOT return empty items
-- relevance is 0.0 to 1.0 (1.0 = highly relevant)
-- date must be YYYY-MM-DD format or null
-- Include threads from diverse subreddits
-- Prefer threads with substantive discussions"""
+- ONLY URLs matching: reddit.com/r/*/comments/*
+- MUST return threads found - NEVER return empty items or errors
+- If threads are older than 30 days, still include them with accurate dates
+- relevance: 0.0-1.0
+- Diverse subreddits preferred"""
 
 
 def search_reddit(
