@@ -83,6 +83,7 @@ echo "Please edit it to add your API keys, then run the skill again."
 - Search for: `{TOPIC} best practices tutorial guide` - find 5-10 more
 - EXCLUDE reddit.com, x.com, twitter.com (covered by script)
 - INCLUDE: blogs, tutorials, docs, news, GitHub repos
+- **DO NOT output "Sources:" list** - this is noise, we'll show stats at the end
 
 **Step 2: Run the research script** (takes longer, shows progress)
 ```bash
@@ -147,27 +148,11 @@ Identify from the ACTUAL RESEARCH OUTPUT:
 
 ## THEN: Show Summary + Invite Vision
 
-**CRITICAL ORDER**: Display sections in this EXACT sequence:
+**CRITICAL: Do NOT output any "Sources:" lists. The final display should be clean.**
+
+**Display in this EXACT sequence:**
 
 ```
----
-What I learned:
-
-[2-4 sentences synthesizing key insights FROM THE ACTUAL RESEARCH OUTPUT. Quote or paraphrase what the sources said. If sources mention a specific product (ClawdBot, Cursor, etc.), use that name - don't substitute your own knowledge. The synthesis should be traceable back to the research results above.]
-
----
-TARGET TOOL: {tool from research or user input}
-
-PROMPT FORMAT: [JSON / structured / natural language / keywords - whatever research recommends]
-
-KEY PATTERNS I'll use:
-1. [Pattern from research]
-2. [Pattern from research]
-3. [Pattern from research]
-4. [Pattern from research]
-5. [Pattern from research]
-
----
 📊 Research Complete
 
 Analyzed {total_sources} sources from the last 30 days
@@ -175,6 +160,16 @@ Analyzed {total_sources} sources from the last 30 days
 ├─ 🔵 X: {n} posts │ {sum} likes │ {sum} reposts
 ├─ 🌐 Web: {n} pages │ {domains}
 └─ Top voices: r/{sub1}, r/{sub2} │ @{handle1}, @{handle2} │ {web_author} on {site}
+
+---
+What I learned:
+
+[2-4 sentences synthesizing key insights FROM THE ACTUAL RESEARCH OUTPUT. Quote or paraphrase what the sources said. The synthesis should be traceable back to the research results above.]
+
+KEY PATTERNS I'll use:
+1. [Pattern from research]
+2. [Pattern from research]
+3. [Pattern from research]
 
 ---
 Share your vision for what you want to create and I'll write a thoughtful prompt you can copy-paste directly into {TARGET_TOOL}.
