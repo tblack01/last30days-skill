@@ -24,18 +24,56 @@ def _log(msg: str):
 def _extract_core_subject(topic: str) -> str:
     """Extract core subject from verbose query for X search.
 
-    X search is literal keyword matching, not semantic.
-    Strip noise words to get searchable terms.
+    X search is literal keyword AND matching — all words must appear.
+    Aggressively strip question/meta/research words to keep only the
+    core product/concept name (2-3 words max).
     """
-    noise = ['best', 'top', 'how to', 'tips for', 'practices', 'features',
-             'killer', 'guide', 'tutorial', 'recommendations', 'advice',
-             'prompting', 'using', 'for', 'with', 'the', 'of', 'in', 'on',
-             'usecases', 'use cases', 'examples', 'what are', 'what is']
-    words = topic.lower().split()
-    result = [w for w in words if w not in noise]
-    # Rejoin compound terms that got split (e.g., "open claw" -> "openclaw")
-    joined = ' '.join(result[:4]) or topic  # Keep max 4 words
-    return joined
+    text = topic.lower().strip()
+
+    # Phase 1: Strip multi-word prefixes (longest first)
+    prefixes = [
+        'what are the best', 'what is the best', 'what are the latest',
+        'what are people saying about', 'what do people think about',
+        'how do i use', 'how to use', 'how to',
+        'what are', 'what is', 'tips for', 'best practices for',
+    ]
+    for p in prefixes:
+        if text.startswith(p + ' '):
+            text = text[len(p):].strip()
+            break
+
+    # Phase 2: Strip multi-word suffixes
+    suffixes = [
+        'best practices', 'use cases', 'prompt techniques',
+        'prompting techniques', 'prompting tips',
+    ]
+    for s in suffixes:
+        if text.endswith(' ' + s):
+            text = text[:-len(s)].strip()
+            break
+
+    # Phase 3: Filter individual noise words
+    _noise = {
+        # Question/filler words
+        'a', 'an', 'the', 'is', 'are', 'was', 'were', 'and', 'or',
+        'of', 'in', 'on', 'for', 'with', 'about', 'to',
+        'people', 'saying', 'think', 'said', 'lately',
+        # Research/meta descriptors
+        'best', 'top', 'good', 'great', 'awesome', 'killer',
+        'latest', 'new', 'news', 'update', 'updates',
+        'practices', 'features', 'guide', 'tutorial',
+        'recommendations', 'advice', 'review', 'reviews',
+        'usecases', 'examples', 'comparison', 'versus', 'vs',
+        # Prompting meta words
+        'prompt', 'prompts', 'prompting', 'techniques', 'tips',
+        'tricks', 'methods', 'strategies', 'approaches',
+        # Action words
+        'using', 'uses', 'use',
+    }
+    words = text.split()
+    result = [w for w in words if w not in _noise]
+
+    return ' '.join(result[:3]) or topic.lower().strip()  # Max 3 words
 
 
 def is_bird_installed() -> bool:
@@ -125,43 +163,23 @@ def get_bird_status() -> Dict[str, Any]:
     }
 
 
-def search_x(
-    topic: str,
-    from_date: str,
-    to_date: str,
-    depth: str = "default",
-) -> Dict[str, Any]:
-    """Search X using Bird CLI.
+def _run_bird_search(query: str, count: int, timeout: int) -> Dict[str, Any]:
+    """Run a single Bird CLI search and return raw response.
 
     Args:
-        topic: Search topic
-        from_date: Start date (YYYY-MM-DD)
-        to_date: End date (YYYY-MM-DD) - unused but kept for API compatibility
-        depth: Research depth - "quick", "default", or "deep"
+        query: Full search query string (including since: filter)
+        count: Number of results to request
+        timeout: Timeout in seconds
 
     Returns:
         Raw Bird JSON response or error dict.
     """
-    count = DEPTH_CONFIG.get(depth, DEPTH_CONFIG["default"])
-
-    # Extract core subject - X search is literal, not semantic
-    # "best open claw usecases" -> "open claw" (searchable keywords)
-    core_topic = _extract_core_subject(topic)
-
-    # Build query with date filter using X's search syntax
-    # Bird doesn't support --since flag, but X search accepts since:YYYY-MM-DD in query
-    query = f"{core_topic} since:{from_date}"
-
-    # Build command
     cmd = [
         "bird", "search",
         query,
         "-n", str(count),
         "--json",
     ]
-
-    # Adjust timeout based on depth
-    timeout = 30 if depth == "quick" else 45 if depth == "default" else 60
 
     try:
         result = subprocess.run(
@@ -175,7 +193,6 @@ def search_x(
             error = result.stderr.strip() or "Bird search failed"
             return {"error": error, "items": []}
 
-        # Parse JSON output
         output = result.stdout.strip()
         if not output:
             return {"items": []}
@@ -188,6 +205,47 @@ def search_x(
         return {"error": f"Invalid JSON response: {e}", "items": []}
     except Exception as e:
         return {"error": str(e), "items": []}
+
+
+def search_x(
+    topic: str,
+    from_date: str,
+    to_date: str,
+    depth: str = "default",
+) -> Dict[str, Any]:
+    """Search X using Bird CLI with automatic retry on 0 results.
+
+    Args:
+        topic: Search topic
+        from_date: Start date (YYYY-MM-DD)
+        to_date: End date (YYYY-MM-DD) - unused but kept for API compatibility
+        depth: Research depth - "quick", "default", or "deep"
+
+    Returns:
+        Raw Bird JSON response or error dict.
+    """
+    count = DEPTH_CONFIG.get(depth, DEPTH_CONFIG["default"])
+    timeout = 30 if depth == "quick" else 45 if depth == "default" else 60
+
+    # Extract core subject - X search is literal, not semantic
+    core_topic = _extract_core_subject(topic)
+    query = f"{core_topic} since:{from_date}"
+
+    _log(f"Searching: {query}")
+    response = _run_bird_search(query, count, timeout)
+
+    # Check if we got results
+    items = parse_bird_response(response)
+
+    # Retry with fewer keywords if 0 results and query has 3+ words
+    core_words = core_topic.split()
+    if not items and len(core_words) > 2:
+        shorter = ' '.join(core_words[:2])
+        _log(f"0 results for '{core_topic}', retrying with '{shorter}'")
+        query = f"{shorter} since:{from_date}"
+        response = _run_bird_search(query, count, timeout)
+
+    return response
 
 
 def search_handles(
