@@ -1,11 +1,12 @@
 ---
 name: last30days
+version: "2.1"
 description: Research a topic from the last 30 days on Reddit + X + Web, become an expert, and write copy-paste-ready prompts for the user's target tool.
 argument-hint: 'nano banana pro prompts, NVIDIA news, best AI video tools'
 allowed-tools: Bash, Read, Write, AskUserQuestion, WebSearch
 ---
 
-# last30days: Research Any Topic from the Last 30 Days
+# last30days v2.1: Research Any Topic from the Last 30 Days
 
 Research ANY topic across Reddit, X, and the web. Surface what people are actually discussing, recommending, and debating right now.
 
@@ -251,7 +252,7 @@ KEY PATTERNS from the research:
 ---
 ✅ All agents reported back!
 ├─ 🟠 Reddit: {N} threads │ {N} upvotes │ {N} comments
-├─ 🔵 X: {N} posts │ {N} likes │ {N} reposts (via Bird/xAI)
+├─ 🔵 X: {N} posts │ {N} likes │ {N} reposts
 ├─ 🌐 Web: {N} pages (supplementary)
 └─ 🗣️ Top voices: @{handle1} ({N} likes), @{handle2} │ r/{sub1}, r/{sub2}
 ---

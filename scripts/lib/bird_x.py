@@ -1,11 +1,19 @@
-"""Bird CLI client for X (Twitter) search."""
+"""Bird X search client - vendored Twitter GraphQL search for /last30days v2.1.
+
+Uses a vendored subset of @steipete/bird v0.8.0 (MIT License) to search X
+via Twitter's GraphQL API. No external `bird` CLI binary needed - just Node.js 22+.
+"""
 
 import json
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
+
+# Path to the vendored bird-search wrapper
+_BIRD_SEARCH_MJS = Path(__file__).parent / "vendor" / "bird-search" / "bird-search.mjs"
 
 # Depth configurations: number of results to request
 DEPTH_CONFIG = {
@@ -77,32 +85,33 @@ def _extract_core_subject(topic: str) -> str:
 
 
 def is_bird_installed() -> bool:
-    """Check if Bird CLI is installed.
+    """Check if vendored Bird search module is available.
 
     Returns:
-        True if 'bird' command is available in PATH, False otherwise.
+        True if bird-search.mjs exists and Node.js 22+ is in PATH.
     """
-    return shutil.which("bird") is not None
+    if not _BIRD_SEARCH_MJS.exists():
+        return False
+    return shutil.which("node") is not None
 
 
 def is_bird_authenticated() -> Optional[str]:
-    """Check if Bird is authenticated by running 'bird whoami'.
+    """Check if X credentials are available (env vars or browser cookies).
 
     Returns:
-        Username if authenticated, None otherwise.
+        Auth source string if authenticated, None otherwise.
     """
     if not is_bird_installed():
         return None
 
     try:
         result = subprocess.run(
-            ["bird", "whoami"],
+            ["node", str(_BIRD_SEARCH_MJS), "--whoami"],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=15,
         )
         if result.returncode == 0 and result.stdout.strip():
-            # Output is typically the username
             return result.stdout.strip().split('\n')[0]
         return None
     except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
@@ -110,7 +119,7 @@ def is_bird_authenticated() -> Optional[str]:
 
 
 def check_npm_available() -> bool:
-    """Check if npm is available for installation.
+    """Check if npm is available (kept for API compatibility).
 
     Returns:
         True if 'npm' command is available in PATH, False otherwise.
@@ -119,52 +128,37 @@ def check_npm_available() -> bool:
 
 
 def install_bird() -> Tuple[bool, str]:
-    """Install Bird CLI via npm.
+    """No-op - Bird search is vendored in v2.1, no installation needed.
 
     Returns:
         Tuple of (success, message).
     """
-    if not check_npm_available():
-        return False, "npm not found. Install Node.js first, or install Bird manually: https://github.com/steipete/bird"
-
-    try:
-        _log("Installing Bird CLI...")
-        result = subprocess.run(
-            ["npm", "install", "-g", "@steipete/bird"],
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        if result.returncode == 0:
-            return True, "Bird CLI installed successfully!"
-        else:
-            error = result.stderr.strip() or result.stdout.strip() or "Unknown error"
-            return False, f"Installation failed: {error}"
-    except subprocess.TimeoutExpired:
-        return False, "Installation timed out"
-    except Exception as e:
-        return False, f"Installation error: {e}"
+    if is_bird_installed():
+        return True, "Bird search is bundled with /last30days v2.1 - no installation needed."
+    if not shutil.which("node"):
+        return False, "Node.js 22+ is required for X search. Install Node.js first."
+    return False, f"Vendored bird-search.mjs not found at {_BIRD_SEARCH_MJS}"
 
 
 def get_bird_status() -> Dict[str, Any]:
-    """Get comprehensive Bird status.
+    """Get comprehensive Bird search status.
 
     Returns:
         Dict with keys: installed, authenticated, username, can_install
     """
     installed = is_bird_installed()
-    username = is_bird_authenticated() if installed else None
+    auth_source = is_bird_authenticated() if installed else None
 
     return {
         "installed": installed,
-        "authenticated": username is not None,
-        "username": username,
-        "can_install": check_npm_available(),
+        "authenticated": auth_source is not None,
+        "username": auth_source,  # Now returns auth source (e.g., "Safari", "env AUTH_TOKEN")
+        "can_install": True,  # Always vendored in v2.1
     }
 
 
 def _run_bird_search(query: str, count: int, timeout: int) -> Dict[str, Any]:
-    """Run a single Bird CLI search and return raw response.
+    """Run a search using the vendored bird-search.mjs module.
 
     Args:
         query: Full search query string (including since: filter)
@@ -175,9 +169,9 @@ def _run_bird_search(query: str, count: int, timeout: int) -> Dict[str, Any]:
         Raw Bird JSON response or error dict.
     """
     cmd = [
-        "bird", "search",
+        "node", str(_BIRD_SEARCH_MJS),
         query,
-        "-n", str(count),
+        "--count", str(count),
         "--json",
     ]
 
@@ -276,9 +270,9 @@ def search_handles(
         query = f"from:{handle} {core_topic} since:{from_date}"
 
         cmd = [
-            "bird", "search",
+            "node", str(_BIRD_SEARCH_MJS),
             query,
-            "-n", str(count_per),
+            "--count", str(count_per),
             "--json",
         ]
 

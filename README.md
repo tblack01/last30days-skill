@@ -1,10 +1,12 @@
-# /last30days v2
+# /last30days v2.1
 
 **The AI world reinvents itself every month. This Claude Code skill keeps you current.** /last30days researches your topic across Reddit, X, and the web from the last 30 days, finds what the community is actually upvoting and sharing, and writes you a prompt that works today, not six months ago. Whether it's Ralph Wiggum loops, Suno music prompts, or the latest Midjourney techniques, you'll prompt like someone who's been paying attention.
 
-**New in V2:** Dramatically better search results. Smarter query construction finds posts that V1 missed entirely, and a new two-phase search automatically discovers key @handles and subreddits from initial results, then drills deeper. Also: free X search via [Bird CLI](https://github.com/steipete/bird) (no xAI key needed), `--days=N` for flexible lookback, and automatic model fallback. [Full changelog below.](#whats-new-in-v2)
+**New in V2.1:** X search is now fully bundled - no external `bird` CLI or xAI API key needed for X. Just have Node.js 22+ installed. Uses a vendored subset of Bird's Twitter GraphQL client (MIT licensed, originally by [@steipete](https://x.com/steipete)).
 
-**The tradeoff:** V2 finds way more content but takes longer — typically 2-8 minutes depending on how niche your topic is. The old V1 was faster but regularly missed results (like returning 0 X posts on trending topics). We think the depth is worth the wait, but if you'd use a faster "quick mode" that trades some depth for speed, let us know: [@mvanhorn](https://x.com/mvanhorn) / [@slashlast30days](https://x.com/slashlast30days).
+**New in V2:** Dramatically better search results. Smarter query construction finds posts that V1 missed entirely, and a new two-phase search automatically discovers key @handles and subreddits from initial results, then drills deeper. Free X search (no xAI key needed), `--days=N` for flexible lookback, and automatic model fallback. [Full changelog below.](#whats-new-in-v2)
+
+**The tradeoff:** V2 finds way more content but takes longer - typically 2-8 minutes depending on how niche your topic is. The old V1 was faster but regularly missed results (like returning 0 X posts on trending topics). We think the depth is worth the wait, but if you'd use a faster "quick mode" that trades some depth for speed, let us know: [@mvanhorn](https://x.com/mvanhorn) / [@slashlast30days](https://x.com/slashlast30days).
 
 **Best for prompt research**: discover what prompting techniques actually work for any tool (ChatGPT, Midjourney, Claude, Figma AI, etc.) by learning from real community discussions and best practices.
 
@@ -20,21 +22,22 @@ git clone https://github.com/mvanhorn/last30days-skill.git ~/.claude/skills/last
 mkdir -p ~/.config/last30days
 cat > ~/.config/last30days/.env << 'EOF'
 OPENAI_API_KEY=sk-...
-XAI_API_KEY=xai-...       # optional if using Bird CLI
+XAI_API_KEY=xai-...       # optional - not needed for X search in v2.1
 EOF
 chmod 600 ~/.config/last30days/.env
 ```
 
-### Optional: Bird CLI for free X search
+### X Search Authentication
 
-[Bird CLI](https://github.com/steipete/bird) lets you search X without an xAI API key. If installed and authenticated, /last30days uses it automatically.
+V2.1 bundles X search directly - no external tools needed. Just be logged into x.com in Safari, Chrome, or Firefox and it auto-detects your session cookies.
 
+Alternatively, set environment variables:
 ```bash
-npm install -g @steipete/bird
-bird login
+export AUTH_TOKEN=your_auth_token    # from x.com cookies
+export CT0=your_ct0_token            # from x.com cookies
 ```
 
-Bird is free and doesn't require an xAI key. If both Bird and an xAI key are available, Bird is preferred.
+**Requirements:** Node.js 22+ (for the vendored Twitter GraphQL client).
 
 ## Usage
 
@@ -780,11 +783,11 @@ This example shows /last30days discovering **emerging developer workflows** - re
 ## Requirements
 
 - **OpenAI API key** - For Reddit research (uses web search via Responses API)
-- **X search** (one of):
-  - **Bird CLI** (free) - `npm install -g @steipete/bird && bird login`
-  - **xAI API key** - Paid, uses Grok's live X search
+- **Node.js 22+** - For X search (bundled Twitter GraphQL client)
+- **X session** - Be logged into x.com in your browser, or set `AUTH_TOKEN`/`CT0` env vars
+- **xAI API key** (optional fallback) - If the bundled search can't authenticate, falls back to xAI's Grok API
 
-At least one API key is required. Bird CLI is recommended for X search since it's free.
+At least one API key is required. X search works automatically if you're logged into x.com in your browser.
 
 ## How It Works
 
@@ -792,7 +795,7 @@ At least one API key is required. Bird CLI is recommended for X search since it'
 
 **Phase 1: Broad discovery**
 - OpenAI Responses API with `web_search` tool scoped to reddit.com
-- Bird CLI (or xAI API) for X/Twitter search
+- Vendored Twitter GraphQL search (or xAI API fallback) for X search
 - WebSearch for blogs, news, docs, tutorials
 - Reddit JSON enrichment for real engagement metrics (upvotes, comments)
 - Scoring algorithm weighing recency, relevance, and engagement
@@ -825,9 +828,9 @@ V2 finds significantly more content than V1. Two major improvements:
 
 **Reddit JSON enrichment** - Fetches real upvote and comment counts from Reddit's free API for every thread, giving you actual engagement signals instead of estimates.
 
-### Free X search via Bird CLI
+### Bundled X search (v2.1)
 
-**Bird CLI integration** - Search X without an xAI API key. Just `npm install -g @steipete/bird && bird login`. Auto-detected at runtime — if Bird is installed, it's used automatically. If both Bird and an xAI key are available, Bird is preferred.
+**X search is fully self-contained** - No external `bird` CLI or xAI API key needed. /last30days bundles a vendored subset of Bird's Twitter GraphQL client (MIT licensed, by Peter Steinberger). Just be logged into x.com in your browser and it auto-detects your session. Falls back to xAI API if bundled search can't authenticate.
 
 ### Everything else
 
