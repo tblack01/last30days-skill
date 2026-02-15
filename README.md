@@ -2,7 +2,7 @@
 
 **The AI world reinvents itself every month. This Claude Code skill keeps you current.** /last30days researches your topic across Reddit, X, and the web from the last 30 days, finds what the community is actually upvoting and sharing, and writes you a prompt that works today, not six months ago. Whether it's Ralph Wiggum loops, Suno music prompts, or the latest Midjourney techniques, you'll prompt like someone who's been paying attention.
 
-**New in V2.1:** X search is now fully bundled - no external `bird` CLI or xAI API key needed for X. Just have Node.js 22+ installed. Uses a vendored subset of Bird's Twitter GraphQL client (MIT licensed, originally by [@steipete](https://x.com/steipete)).
+**New in V2.1:** X search is now fully bundled - no external `bird` CLI or xAI API key needed for X. Just have Node.js 22+ installed. Uses a vendored subset of Bird's Twitter GraphQL client (MIT licensed, originally by [@steipete](https://x.com/steipete)). **YouTube search** is now a 4th source - automatically searches YouTube and extracts transcripts via yt-dlp when installed. Inspired by [@steipete](https://x.com/steipete)'s yt-dlp + [summarize](https://github.com/steipete/summarize) toolchain approach.
 
 **New in V2:** Dramatically better search results. Smarter query construction finds posts that V1 missed entirely, and a new two-phase search automatically discovers key @handles and subreddits from initial results, then drills deeper. Free X search (no xAI key needed), `--days=N` for flexible lookback, and automatic model fallback. [Full changelog below.](#whats-new-in-v2)
 
@@ -54,7 +54,7 @@ Examples:
 
 ## What It Does
 
-1. **Researches** - Scans Reddit and X for discussions from the last 30 days
+1. **Researches** - Scans Reddit, X, and YouTube for discussions from the last 30 days
 2. **Synthesizes** - Identifies patterns, best practices, and what actually works
 3. **Delivers** - Either writes copy-paste-ready prompts for your target tool, or gives you a curated expert-level answer
 
@@ -774,8 +774,8 @@ This example shows /last30days discovering **emerging developer workflows** - re
 | Flag | Description |
 |------|-------------|
 | `--days=N` | Look back N days instead of 30 (e.g., `--days=7` for weekly roundup) |
-| `--quick` | Faster research, fewer sources (8-12 each), skips supplemental search |
-| `--deep` | Comprehensive research (50-70 Reddit, 40-60 X) with extended supplemental |
+| `--quick` | Faster research, fewer sources (8-12 each), skips supplemental search. YouTube: 10 videos, 3 transcripts |
+| `--deep` | Comprehensive research (50-70 Reddit, 40-60 X) with extended supplemental. YouTube: 40 videos, 8 transcripts |
 | `--debug` | Verbose logging for troubleshooting |
 | `--sources=reddit` | Reddit only |
 | `--sources=x` | X only |
@@ -786,8 +786,9 @@ This example shows /last30days discovering **emerging developer workflows** - re
 - **Node.js 22+** - For X search (bundled Twitter GraphQL client)
 - **X session** - Be logged into x.com in your browser, or set `AUTH_TOKEN`/`CT0` env vars
 - **xAI API key** (optional fallback) - If the bundled search can't authenticate, falls back to xAI's Grok API
+- **yt-dlp** (optional) - For YouTube search + transcript extraction. Install via `brew install yt-dlp` or `pip install yt-dlp`. When present, automatically searches YouTube and extracts video transcripts as a 4th source.
 
-At least one API key is required. X search works automatically if you're logged into x.com in your browser.
+At least one API key is required. X search works automatically if you're logged into x.com in your browser. YouTube search activates automatically when yt-dlp is in your PATH.
 
 ## How It Works
 
@@ -796,6 +797,7 @@ At least one API key is required. X search works automatically if you're logged 
 **Phase 1: Broad discovery**
 - OpenAI Responses API with `web_search` tool scoped to reddit.com
 - Vendored Twitter GraphQL search (or xAI API fallback) for X search
+- YouTube search + transcript extraction via yt-dlp (when installed)
 - WebSearch for blogs, news, docs, tutorials
 - Reddit JSON enrichment for real engagement metrics (upvotes, comments)
 - Scoring algorithm weighing recency, relevance, and engagement
@@ -827,6 +829,14 @@ V2 finds significantly more content than V1. Two major improvements:
 **Smart supplemental search (Phase 2)** - After the initial broad search, extracts key @handles and subreddits from the results, then runs targeted follow-up searches to find content that keyword search alone misses. Example: researching "Open Claw" automatically discovers @openclaw, @steipete and drills into their posts. For Reddit, it hits the free `.json` search endpoint scoped to discovered subreddits — no extra API keys needed.
 
 **Reddit JSON enrichment** - Fetches real upvote and comment counts from Reddit's free API for every thread, giving you actual engagement signals instead of estimates.
+
+### YouTube search with transcripts (v2.1)
+
+**YouTube is now a 4th research source.** When yt-dlp is installed (`brew install yt-dlp`), /last30days automatically searches YouTube for your topic, fetches view counts and engagement data, and extracts auto-generated transcripts from the top videos. Transcripts give the synthesis engine actual content to work with — not just titles.
+
+YouTube items go through the same scoring pipeline (relevance + recency + engagement) and are deduped, scored, and rendered alongside Reddit and X results. Views dominate YouTube's engagement formula since they're the primary discovery signal.
+
+Inspired by [Peter Steinberger](https://x.com/steipete)'s yt-dlp + [summarize](https://github.com/steipete/summarize) toolchain. Peter's approach of combining yt-dlp for search/metadata with transcript extraction for content analysis was the direct inspiration for this feature.
 
 ### Bundled X search (v2.1)
 

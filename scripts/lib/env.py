@@ -196,6 +196,12 @@ def get_x_source(config: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def is_ytdlp_available() -> bool:
+    """Check if yt-dlp is installed for YouTube search."""
+    from . import youtube_yt
+    return youtube_yt.is_ytdlp_installed()
+
+
 def get_x_source_status(config: Dict[str, Any]) -> Dict[str, Any]:
     """Get detailed X source status for UI decisions.
 

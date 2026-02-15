@@ -170,6 +170,40 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
             lines.append(f"  *{item.why_relevant}*")
             lines.append("")
 
+    # YouTube items
+    if report.youtube_error:
+        lines.append("### YouTube Videos")
+        lines.append("")
+        lines.append(f"**ERROR:** {report.youtube_error}")
+        lines.append("")
+    elif report.youtube:
+        lines.append("### YouTube Videos")
+        lines.append("")
+        for item in report.youtube[:limit]:
+            eng_str = ""
+            if item.engagement:
+                eng = item.engagement
+                parts = []
+                if eng.views is not None:
+                    parts.append(f"{eng.views:,} views")
+                if eng.likes is not None:
+                    parts.append(f"{eng.likes:,} likes")
+                if parts:
+                    eng_str = f" [{', '.join(parts)}]"
+
+            date_str = f" ({item.date})" if item.date else ""
+
+            lines.append(f"**{item.id}** (score:{item.score}) {item.channel_name}{date_str}{eng_str}")
+            lines.append(f"  {item.title}")
+            lines.append(f"  {item.url}")
+            if item.transcript_snippet:
+                snippet = item.transcript_snippet[:200]
+                if len(item.transcript_snippet) > 200:
+                    snippet += "..."
+                lines.append(f"  Transcript: {snippet}")
+            lines.append(f"  *{item.why_relevant}*")
+            lines.append("")
+
     # Web items (if any - populated by Claude)
     if report.web_error:
         lines.append("### Web Results")

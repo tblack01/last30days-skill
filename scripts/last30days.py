@@ -43,6 +43,7 @@ from lib import (
     ui,
     websearch,
     xai_x,
+    youtube_yt,
 )
 
 
@@ -206,6 +207,34 @@ def _search_x(
     return x_items, raw_response, x_error
 
 
+def _search_youtube(
+    topic: str,
+    from_date: str,
+    to_date: str,
+    depth: str,
+) -> tuple:
+    """Search YouTube via yt-dlp (runs in thread).
+
+    Returns:
+        Tuple of (youtube_items, youtube_error)
+    """
+    youtube_error = None
+
+    try:
+        response = youtube_yt.search_and_transcribe(
+            topic, from_date, to_date, depth=depth,
+        )
+    except Exception as e:
+        return [], f"{type(e).__name__}: {e}"
+
+    youtube_items = youtube_yt.parse_youtube_response(response)
+
+    if response.get("error"):
+        youtube_error = response["error"]
+
+    return youtube_items, youtube_error
+
+
 def _run_supplemental(
     topic: str,
     reddit_items: list,
@@ -340,22 +369,25 @@ def run_research(
     mock: bool = False,
     progress: ui.ProgressDisplay = None,
     x_source: str = "xai",
+    run_youtube: bool = False,
 ) -> tuple:
     """Run the research pipeline.
 
     Returns:
-        Tuple of (reddit_items, x_items, web_needed, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error)
+        Tuple of (reddit_items, x_items, youtube_items, web_needed, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error, youtube_error)
 
     Note: web_needed is True when WebSearch should be performed by Claude.
     The script outputs a marker and Claude handles WebSearch in its session.
     """
     reddit_items = []
     x_items = []
+    youtube_items = []
     raw_openai = None
     raw_xai = None
     raw_reddit_enriched = []
     reddit_error = None
     x_error = None
+    youtube_error = None
 
     # Check if WebSearch is needed (always needed in web-only mode)
     web_needed = sources in ("all", "web", "reddit-web", "x-web")
@@ -365,19 +397,35 @@ def run_research(
         if progress:
             progress.start_web_only()
             progress.end_web_only()
-        return reddit_items, x_items, True, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error
+        # Still run YouTube in web-only mode if yt-dlp is available
+        if run_youtube:
+            if progress:
+                progress.start_youtube()
+            try:
+                youtube_items, youtube_error = _search_youtube(topic, from_date, to_date, depth)
+                if youtube_error and progress:
+                    progress.show_error(f"YouTube error: {youtube_error}")
+            except Exception as e:
+                youtube_error = f"{type(e).__name__}: {e}"
+                if progress:
+                    progress.show_error(f"YouTube error: {e}")
+            if progress:
+                progress.end_youtube(len(youtube_items))
+        return reddit_items, x_items, youtube_items, True, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error, youtube_error
 
     # Determine which searches to run
-    run_reddit = sources in ("both", "reddit", "all", "reddit-web")
-    run_x = sources in ("both", "x", "all", "x-web")
+    do_reddit = sources in ("both", "reddit", "all", "reddit-web")
+    do_x = sources in ("both", "x", "all", "x-web")
 
-    # Run Reddit and X searches in parallel
+    # Run Reddit, X, and YouTube searches in parallel
     reddit_future = None
     x_future = None
+    youtube_future = None
+    max_workers = 2 + (1 if run_youtube else 0)
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        # Submit both searches
-        if run_reddit:
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit searches
+        if do_reddit:
             if progress:
                 progress.start_reddit()
             reddit_future = executor.submit(
@@ -385,12 +433,19 @@ def run_research(
                 from_date, to_date, depth, mock
             )
 
-        if run_x:
+        if do_x:
             if progress:
                 progress.start_x()
             x_future = executor.submit(
                 _search_x, topic, config, selected_models,
                 from_date, to_date, depth, mock, x_source
+            )
+
+        if run_youtube:
+            if progress:
+                progress.start_youtube()
+            youtube_future = executor.submit(
+                _search_youtube, topic, from_date, to_date, depth
             )
 
         # Collect results
@@ -417,6 +472,18 @@ def run_research(
                     progress.show_error(f"X error: {e}")
             if progress:
                 progress.end_x(len(x_items))
+
+        if youtube_future:
+            try:
+                youtube_items, youtube_error = youtube_future.result()
+                if youtube_error and progress:
+                    progress.show_error(f"YouTube error: {youtube_error}")
+            except Exception as e:
+                youtube_error = f"{type(e).__name__}: {e}"
+                if progress:
+                    progress.show_error(f"YouTube error: {e}")
+            if progress:
+                progress.end_youtube(len(youtube_items))
 
     # Enrich Reddit items with real data (sequential, but with error handling per-item)
     if reddit_items:
@@ -455,7 +522,7 @@ def run_research(
         if sup_x:
             x_items.extend(sup_x)
 
-    return reddit_items, x_items, web_needed, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error
+    return reddit_items, x_items, youtube_items, web_needed, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error, youtube_error
 
 
 def main():
@@ -543,6 +610,9 @@ def main():
     x_source_status = env.get_x_source_status(config)
     x_source = x_source_status["source"]  # 'bird', 'xai', or None
 
+    # Auto-detect yt-dlp for YouTube search
+    has_ytdlp = env.is_ytdlp_available()
+
     # Initialize progress display with topic
     progress = ui.ProgressDisplay(args.topic, show_banner=True)
 
@@ -619,7 +689,7 @@ def main():
         mode = sources
 
     # Run research
-    reddit_items, x_items, web_needed, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error = run_research(
+    reddit_items, x_items, youtube_items, web_needed, raw_openai, raw_xai, raw_reddit_enriched, reddit_error, x_error, youtube_error = run_research(
         args.topic,
         sources,
         config,
@@ -630,6 +700,7 @@ def main():
         args.mock,
         progress,
         x_source=x_source or "xai",
+        run_youtube=has_ytdlp,
     )
 
     # Processing phase
@@ -638,23 +709,28 @@ def main():
     # Normalize items
     normalized_reddit = normalize.normalize_reddit_items(reddit_items, from_date, to_date)
     normalized_x = normalize.normalize_x_items(x_items, from_date, to_date)
+    normalized_youtube = normalize.normalize_youtube_items(youtube_items, from_date, to_date) if youtube_items else []
 
     # Hard date filter: exclude items with verified dates outside the range
     # This is the safety net - even if prompts let old content through, this filters it
     filtered_reddit = normalize.filter_by_date_range(normalized_reddit, from_date, to_date)
     filtered_x = normalize.filter_by_date_range(normalized_x, from_date, to_date)
+    filtered_youtube = normalize.filter_by_date_range(normalized_youtube, from_date, to_date) if normalized_youtube else []
 
     # Score items
     scored_reddit = score.score_reddit_items(filtered_reddit)
     scored_x = score.score_x_items(filtered_x)
+    scored_youtube = score.score_youtube_items(filtered_youtube) if filtered_youtube else []
 
     # Sort items
     sorted_reddit = score.sort_items(scored_reddit)
     sorted_x = score.sort_items(scored_x)
+    sorted_youtube = score.sort_items(scored_youtube) if scored_youtube else []
 
     # Dedupe items
     deduped_reddit = dedupe.dedupe_reddit(sorted_reddit)
     deduped_x = dedupe.dedupe_x(sorted_x)
+    deduped_youtube = dedupe.dedupe_youtube(sorted_youtube) if sorted_youtube else []
 
     # Minimum result guarantee: if all Reddit results were filtered out but
     # we had raw results, keep top 3 by relevance regardless of score
@@ -676,8 +752,10 @@ def main():
     )
     report.reddit = deduped_reddit
     report.x = deduped_x
+    report.youtube = deduped_youtube
     report.reddit_error = reddit_error
     report.x_error = x_error
+    report.youtube_error = youtube_error
 
     # Generate context snippet
     report.context_snippet_md = render.render_context_snippet(report)
@@ -689,7 +767,7 @@ def main():
     if sources == "web":
         progress.show_web_only_complete()
     else:
-        progress.show_complete(len(deduped_reddit), len(deduped_x))
+        progress.show_complete(len(deduped_reddit), len(deduped_x), len(deduped_youtube))
 
     # Output result
     output_result(report, args.emit, web_needed, args.topic, from_date, to_date, missing_keys, args.days)

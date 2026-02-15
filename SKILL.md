@@ -1,14 +1,14 @@
 ---
 name: last30days
 version: "2.1"
-description: Research a topic from the last 30 days on Reddit + X + Web, become an expert, and write copy-paste-ready prompts for the user's target tool.
+description: Research a topic from the last 30 days on Reddit + X + YouTube + Web, become an expert, and write copy-paste-ready prompts for the user's target tool.
 argument-hint: 'nano banana pro prompts, NVIDIA news, best AI video tools'
 allowed-tools: Bash, Read, Write, AskUserQuestion, WebSearch
 ---
 
 # last30days v2.1: Research Any Topic from the Last 30 Days
 
-Research ANY topic across Reddit, X, and the web. Surface what people are actually discussing, recommending, and debating right now.
+Research ANY topic across Reddit, X, YouTube, and the web. Surface what people are actually discussing, recommending, and debating right now.
 
 ## CRITICAL: Parse User Intent
 
@@ -120,10 +120,11 @@ For ALL query types:
 
 The Judge Agent must:
 1. Weight Reddit/X sources HIGHER (they have engagement signals: upvotes, likes)
-2. Weight WebSearch sources LOWER (no engagement data)
-3. Identify patterns that appear across ALL three sources (strongest signals)
-4. Note any contradictions between sources
-5. Extract the top 3-5 actionable insights
+2. Weight YouTube sources HIGH (they have views, likes, and transcript content)
+3. Weight WebSearch sources LOWER (no engagement data)
+4. Identify patterns that appear across ALL sources (strongest signals)
+5. Note any contradictions between sources
+6. Extract the top 3-5 actionable insights
 
 **Do NOT display stats here - they come at the end, right before the invitation.**
 
@@ -204,7 +205,8 @@ CITATION RULE: Cite sources sparingly to prove research is real.
 CITATION PRIORITY (most to least preferred):
 1. @handles from X — "per @handle" (these prove the tool's unique value)
 2. r/subreddits from Reddit — "per r/subreddit"
-3. Web sources — ONLY when Reddit/X don't cover that specific fact
+3. YouTube channels — "per [channel name] on YouTube" (transcript-backed insights)
+4. Web sources — ONLY when Reddit/X/YouTube don't cover that specific fact
 
 The tool's value is surfacing what PEOPLE are saying, not what journalists wrote.
 When both a web article and an X post cover the same fact, cite the X post.
@@ -253,12 +255,14 @@ KEY PATTERNS from the research:
 ✅ All agents reported back!
 ├─ 🟠 Reddit: {N} threads │ {N} upvotes │ {N} comments
 ├─ 🔵 X: {N} posts │ {N} likes │ {N} reposts
+├─ 🔴 YouTube: {N} videos │ {N} views │ {N} with transcripts
 ├─ 🌐 Web: {N} pages (supplementary)
 └─ 🗣️ Top voices: @{handle1} ({N} likes), @{handle2} │ r/{sub1}, r/{sub2}
 ---
 ```
 
 If Reddit returned 0 threads, write: "├─ 🟠 Reddit: 0 threads (no results this cycle)"
+If YouTube returned 0 videos or yt-dlp is not installed, omit the YouTube line entirely.
 NEVER use plain text dashes (-) or pipe (|). ALWAYS use ├─ └─ │ and the emoji.
 
 **SELF-CHECK before displaying**: Re-read your "What I learned" section. Does it match what the research ACTUALLY says? If you catch yourself projecting your own knowledge instead of the research, rewrite it.
@@ -420,7 +424,7 @@ After delivering a prompt, end with:
 ```
 ---
 📚 Expert in: {TOPIC} for {TARGET_TOOL}
-📊 Based on: {n} Reddit threads ({sum} upvotes) + {n} X posts ({sum} likes) + {n} web pages
+📊 Based on: {n} Reddit threads ({sum} upvotes) + {n} X posts ({sum} likes) + {n} YouTube videos ({sum} views) + {n} web pages
 
 Want another prompt? Just tell me what you're creating next.
 ```
