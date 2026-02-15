@@ -992,7 +992,10 @@ def main():
     # This is the safety net - even if prompts let old content through, this filters it
     filtered_reddit = normalize.filter_by_date_range(normalized_reddit, from_date, to_date)
     filtered_x = normalize.filter_by_date_range(normalized_x, from_date, to_date)
-    filtered_youtube = normalize.filter_by_date_range(normalized_youtube, from_date, to_date) if normalized_youtube else []
+    # YouTube: skip hard date filter — youtube_yt.py already applies a soft filter
+    # that prefers recent videos but keeps older ones for evergreen topics.
+    # YouTube content has a longer shelf life than tweets/posts.
+    filtered_youtube = normalized_youtube
     filtered_web = normalize.filter_by_date_range(normalized_web, from_date, to_date) if normalized_web else []
 
     # Score items
