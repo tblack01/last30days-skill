@@ -4,7 +4,7 @@
 
 **New in V2.1  - three headline features:**
 
-1. **Open-class skill with watchlists.** Add any topic to a watchlist  - your competitors, your partners, your board members, an emerging technology  - and /last30days re-researches it on demand or via cron. Designed for always-on environments like [Open Claw](https://github.com/AgenTick/open-claw) where a bot can run research on a schedule and accumulate findings over time.
+1. **Open-class skill with watchlists.** Add any topic to a watchlist  - your competitors, your partners, your board members, an emerging technology  - and /last30days re-researches it on demand or via cron. Designed for always-on environments like [Open Claw](https://github.com/openclaw/openclaw) where a bot can run research on a schedule and accumulate findings over time.
 2. **YouTube transcripts as a 4th source.** When yt-dlp is installed, /last30days automatically searches YouTube, grabs view counts, and extracts auto-generated transcripts from the top videos. A 20-minute review contains 10x the signal of a single post - now the skill reads it. Inspired by [@steipete](https://x.com/steipete)'s yt-dlp + [summarize](https://github.com/steipete/summarize) toolchain.
 3. **Works in OpenAI Codex CLI.** Same skill, same engine. Install to `~/.agents/skills/last30days` and invoke with `$last30days`. Claude Code and Codex users get the same research.
 
@@ -66,7 +66,7 @@ Same SKILL.md, same Python engine, same scripts. The `agents/openai.yaml` provid
 
 ### Open Variant (Watchlist + Briefings)  - For Always-On Bots
 
-**Designed for [Open Claw](https://github.com/AgenTick/open-claw) and similar always-on AI environments.** Add your competitors, partners, board members, or any topic to a watchlist. When paired with a cron job or always-on bot, /last30days re-researches them on a schedule and accumulates findings in a local SQLite database. Ask for a briefing anytime.
+**Designed for [Open Claw](https://github.com/openclaw/openclaw) and similar always-on AI environments.** Add your competitors, partners, board members, or any topic to a watchlist. When paired with a cron job or always-on bot, /last30days re-researches them on a schedule and accumulates findings in a local SQLite database. Ask for a briefing anytime.
 
 **Important:** The watchlist stores schedules as metadata, but nothing triggers runs automatically. You need an external scheduler (cron, launchd, or an always-on bot like Open Claw) to call `watchlist.py run-all` on a timer. In plain Claude Code, you can run `watch run-one` and `watch run-all` manually, but there's no background scheduling.
 
@@ -905,7 +905,7 @@ V2 finds significantly more content than V1. Two major improvements:
 
 **The biggest feature in v2.1 isn't a new source  - it's what happens when you pair /last30days with an always-on bot.** The open variant adds a watchlist, briefings, and history. Add `"Competitor X"` to your watchlist, set it to weekly, and when your bot's cron job fires every Monday, you get a research briefing  - what they shipped, what people said about it, what Reddit and X are discussing. The research accumulates in a local SQLite database, and you can query it anytime with natural language.
 
-**Designed for [Open Claw](https://github.com/AgenTick/open-claw) and similar always-on environments.** The watchlist stores schedules as metadata  - you need cron, launchd, or a persistent bot to actually trigger runs. In Claude Code you can still use `run-one` and `run-all` manually.
+**Designed for [Open Claw](https://github.com/openclaw/openclaw) and similar always-on environments.** The watchlist stores schedules as metadata  - you need cron, launchd, or a persistent bot to actually trigger runs. In Claude Code you can still use `run-one` and `run-all` manually.
 
 ### YouTube search with transcripts (v2.1)
 
@@ -975,4 +975,4 @@ Each API key is transmitted only to its respective endpoint. Your OpenAI key is 
 
 *30 days of research. 30 seconds of work. Four sources. Zero stale prompts.*
 
-*Pair with [Open Claw](https://github.com/AgenTick/open-claw) for automated watchlists and briefings. Reddit. X. YouTube. Web.  - All synthesized into expert answers and copy-paste prompts.*
+*Pair with [Open Claw](https://github.com/openclaw/openclaw) for automated watchlists and briefings. Reddit. X. YouTube. Web.  - All synthesized into expert answers and copy-paste prompts.*
