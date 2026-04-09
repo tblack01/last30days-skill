@@ -7,6 +7,7 @@ Only uses Python stdlib — no external dependencies.
 """
 
 import configparser
+import functools
 import logging
 import platform
 import shutil
@@ -18,8 +19,12 @@ from typing import Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
+@functools.lru_cache(maxsize=1)
 def _is_wsl() -> bool:
-    """Detect if running under Windows Subsystem for Linux."""
+    """Detect if running under Windows Subsystem for Linux.
+
+    Cached after the first call since /proc/version doesn't change at runtime.
+    """
     try:
         return "microsoft" in Path("/proc/version").read_text().lower()
     except OSError:
