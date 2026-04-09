@@ -48,7 +48,7 @@ v3 merges trending and keyword HN results with deduplication for better coverage
 ### @hnshah
 [PR #84](https://github.com/mvanhorn/last30days-skill/pull/84), [#85](https://github.com/mvanhorn/last30days-skill/pull/85), [#86](https://github.com/mvanhorn/last30days-skill/pull/86) - Watchlist delivery, 90-day scanning window, HN/Polymarket storage
 v3 has durable watchlist with multi-source storage and extended time windows.
-> _Add your bio, website, or anything you'd like here._
+> Hiten Shah. Founder. Builds in public. https://github.com/hnshah
 
 ---
 
