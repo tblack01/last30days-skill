@@ -214,6 +214,39 @@ def _apply_fallback_scores(candidates: list[schema.Candidate], *, primary_entity
         candidate.final_score = _final_score(candidate)
 
 
+def _candidate_haystack(candidate: schema.Candidate) -> str:
+    """Build the lowercase text blob against which entity-grounding is checked.
+
+    Expanded 2026-04-19 to include transcript snippets, transcript highlights,
+    and top-comment text. The prior `title + snippet` check missed YouTube
+    videos whose entity mentions live in transcript content and Reddit posts
+    whose mentions are in top comments. Now checks all text surfaces a human
+    would see.
+    """
+    parts: list[str] = [candidate.title or "", candidate.snippet or ""]
+    metadata = candidate.metadata or {}
+
+    transcript_snippet = metadata.get("transcript_snippet") or ""
+    if isinstance(transcript_snippet, str):
+        parts.append(transcript_snippet)
+
+    for hl in metadata.get("transcript_highlights") or []:
+        if isinstance(hl, str):
+            parts.append(hl)
+
+    for tc in metadata.get("top_comments") or []:
+        if isinstance(tc, dict):
+            parts.append(str(tc.get("excerpt", "") or tc.get("text", "") or ""))
+        elif isinstance(tc, str):
+            parts.append(tc)
+
+    for insight in metadata.get("comment_insights") or []:
+        if isinstance(insight, str):
+            parts.append(insight)
+
+    return " ".join(parts).lower()
+
+
 def _fallback_tuple(candidate: schema.Candidate, *, primary_entity: str = "") -> tuple[float, str]:
     score = (
         (candidate.local_relevance * 100.0 * 0.7)
@@ -222,12 +255,16 @@ def _fallback_tuple(candidate: schema.Candidate, *, primary_entity: str = "") ->
     )
     reason = "fallback-local-score"
     # Entity-grounding demotion: if the primary entity (topic minus intent
-    # modifier) is not present in the candidate's title or snippet, subtract
-    # ENTITY_MISS_PENALTY. Skip for candidates with no text at all (e.g.,
-    # image-only TikToks) to avoid penalizing thin-text sources unfairly.
-    if primary_entity and (candidate.title or candidate.snippet):
-        haystack = f"{candidate.title} {candidate.snippet}".lower()
-        if primary_entity.lower() not in haystack:
+    # modifier) is not present anywhere in the candidate's text surfaces
+    # (title, snippet, transcript, transcript highlights, top comments,
+    # insights), subtract ENTITY_MISS_PENALTY. Skip for candidates with
+    # NO text anywhere (e.g., image-only TikToks) to avoid penalizing
+    # thin-text sources unfairly. 2026-04-19 Nate Herk "Managed Agents"
+    # video ranked #2 on a Hermes query despite zero Hermes mentions
+    # because the old haystack only checked title + snippet.
+    if primary_entity:
+        haystack = _candidate_haystack(candidate)
+        if haystack.strip() and primary_entity.lower() not in haystack:
             score -= ENTITY_MISS_PENALTY
             reason = "fallback-local-score (entity-miss demotion)"
     return max(0.0, min(100.0, score)), reason
@@ -245,6 +282,17 @@ def _primary_entity(topic: str) -> str:
     # Also collapse multiple spaces and strip punctuation.
     stripped = re.sub(r"\s+", " ", stripped).strip(" \t\r\n?.,:;!")
     return stripped
+
+
+#: Secondary entity-miss penalty applied directly to final_score (not just
+#: rerank_score). The -25 on rerank_score composes to only -15 on final_score
+#: via the 0.60 weight, which engagement bonus partially offsets on
+#: high-view YouTube items. This secondary penalty lands the full weight on
+#: the composite signal the cluster-scoring layer consumes. 2026-04-19
+#: Nate Herk "Managed Agents" video ranked at cluster #2 with score 51
+#: despite the rerank_score demotion because engagement + freshness drowned
+#: the dilute penalty. This backstop makes the demotion actually decisive.
+ENTITY_MISS_FINAL_PENALTY = 20.0
 
 
 def _final_score(candidate: schema.Candidate) -> float:
@@ -265,6 +313,11 @@ def _final_score(candidate: schema.Candidate) -> float:
     )
     if candidate.rerank_score is not None and candidate.rerank_score < 20.0:
         base *= 0.3
+    # Secondary entity-grounding penalty: when the fallback path flagged
+    # entity-miss via candidate.explanation, apply an additional penalty
+    # at final_score level so engagement signal can't mask the demotion.
+    if candidate.explanation and "entity-miss" in candidate.explanation:
+        base = max(0.0, base - ENTITY_MISS_FINAL_PENALTY)
     return base
 
 
