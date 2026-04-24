@@ -189,7 +189,7 @@ gemini extensions install ./last30days-skill
 git clone https://github.com/mvanhorn/last30days-skill.git ~/.claude/skills/last30days
 ```
 
-Or build the claude.ai `.skill` file from source: `bash scripts/build-skill.sh` produces `dist/last30days.skill`.
+Or build the claude.ai `.skill` file from source: `bash skills/last30days/scripts/build-skill.sh` produces `dist/last30days.skill`.
 
 Reddit (with comments), Hacker News, Polymarket, and GitHub work immediately. Zero configuration. Run `/last30days` once and the setup wizard unlocks more sources in 30 seconds.
 

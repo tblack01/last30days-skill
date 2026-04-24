@@ -5,12 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills" / "last30days" / "scripts"))
 
 from lib import schema
 
 
-SCRIPT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "generate-synthesis-inputs.py"
+SCRIPT_PATH = Path(__file__).resolve().parents[1] / "skills" / "last30days" / "scripts" / "generate-synthesis-inputs.py"
 
 
 def load_module():

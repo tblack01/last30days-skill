@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # sync.sh - Deploy last30days skill to all host locations
-# Usage: bash scripts/sync.sh  (run from repo root)
+# Usage: bash skills/last30days/scripts/sync.sh  (run from repo root)
 set -euo pipefail
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,7 +11,7 @@ COMMON_TARGETS=(
   # but local development needs the cache kept in sync with the repo.
   # Do NOT add ~/.claude/skills/last30days - it creates a duplicate
   # /last30days-3 in the slash command menu alongside the plugin version.
-  "$HOME/.claude/plugins/cache/last30days-skill-private/last30days-3/3.0.1"
+  "$HOME/.claude/plugins/cache/last30days-skill-private/last30days-3/3.0.10"
   "$HOME/.claude/plugins/cache/last30days-skill-private/last30days-3-nogem/3.0.0-nogem"
   "$HOME/.agents/skills/last30days"
   "$HOME/.codex/skills/last30days"

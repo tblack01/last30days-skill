@@ -78,6 +78,7 @@ Individual changelog entries for 3.0.10 through 3.0.14 below document the increm
 ### Fixed
 
 - **TikTok author preference.** `_fetch_post_comments` in `scripts/lib/tiktok.py` preferred `user.nickname` over `user.unique_id`, so the engine captured display names ("Moosa Noormahomed") instead of @handles ("moosanoormahomed"). Flipped to prefer `unique_id`. Nickname still wins as a fallback when `unique_id` is missing. Display names can contain emoji, spaces, and non-Latin characters that do not round-trip to a profile URL; the @handle is the stable identifier.
+- **Single plugin payload layout.** The canonical runtime moved to `skills/last30days/` for both Claude Code and Codex plugin loading. Root-level `SKILL.md`, `scripts/`, `agents/`, and `assets/` are no longer maintained as duplicate copies.
 
 ### Behavior fallback
 

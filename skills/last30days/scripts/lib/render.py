@@ -12,7 +12,7 @@ from . import dates, schema
 
 
 def _skill_version() -> str:
-    """Read plugin version from .claude-plugin/plugin.json if available.
+    """Read plugin version from a plugin manifest if available.
 
     Tries nearest plugin.json by walking up from render.py's own location.
     Falls back to "?" if not found. This keeps the badge emission from
@@ -20,12 +20,13 @@ def _skill_version() -> str:
     """
     here = pathlib.Path(__file__).resolve()
     for parent in [here.parent, *here.parents]:
-        candidate = parent / ".claude-plugin" / "plugin.json"
-        if candidate.is_file():
-            try:
-                return json.loads(candidate.read_text()).get("version", "?")
-            except (json.JSONDecodeError, OSError):
-                return "?"
+        for manifest_dir in (".codex-plugin", ".claude-plugin"):
+            candidate = parent / manifest_dir / "plugin.json"
+            if candidate.is_file():
+                try:
+                    return json.loads(candidate.read_text()).get("version", "?")
+                except (json.JSONDecodeError, OSError):
+                    return "?"
     return "?"
 
 

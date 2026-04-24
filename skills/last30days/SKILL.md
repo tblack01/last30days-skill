@@ -1,6 +1,6 @@
 ---
 name: last30days
-version: "3.0.1"
+version: "3.0.10"
 description: "Research what people actually say about any topic in the last 30 days. Pulls posts and engagement from Reddit, X, YouTube, TikTok, Hacker News, Polymarket, GitHub, and the web."
 argument-hint: 'last30days nvidia earnings reaction | last30days AI video tools | last30days what users want in react'
 allowed-tools: Bash, Read, Write, AskUserQuestion, WebSearch
@@ -104,7 +104,7 @@ These anchors used to live at line 1094 of this file. Three independent Opus 4.7
 🌐 last30days v{VERSION} · synced {YYYY-MM-DD}
 ```
 
-Replace `{VERSION}` with the installed plugin version (`jq -r '.version' "$SKILL_ROOT/.claude-plugin/plugin.json"`) and `{YYYY-MM-DD}` with today's date. No other text on this line. One blank line after, then the synthesis begins.
+Replace `{VERSION}` with the installed plugin version (`jq -r '.version' "$SKILL_ROOT/../../.codex-plugin/plugin.json" 2>/dev/null || jq -r '.version' "$SKILL_ROOT/.claude-plugin/plugin.json"`) and `{YYYY-MM-DD}` with today's date. No other text on this line. One blank line after, then the synthesis begins.
 
 **Why the badge is MANDATORY:** it is the structural anchor for the canonical output shape. Without it the model drifts into blog-post narrative format with `##` section headers and invented titles, violating LAW 2 and LAW 4. The 2026-04-18 public v3.0.6 0/8 regression produced outputs with section headers like "The headline", "Why he is everywhere", "1. gstack dominates", "The 'Homecoming' peak". Direct cause: this anchor was absent. Do NOT skip the badge. Do NOT describe it. Do NOT paraphrase it. Emit it verbatim as line 1.
 
@@ -233,7 +233,7 @@ If your Bash call to `last30days.py` does NOT include the FULL pre-flight checkl
 
 ---
 
-# last30days v3.0.1: Research Any Topic from the Last 30 Days
+# last30days v3.0.10: Research Any Topic from the Last 30 Days
 
 > **Permissions overview:** Reads public web/platform data and optionally saves research briefings to `LAST30DAYS_MEMORY_DIR` (defaults to `~/Documents/Last30Days`). X/Twitter search uses optional user-provided tokens (AUTH_TOKEN/CT0 env vars). Bluesky search uses optional app password (BSKY_HANDLE/BSKY_APP_PASSWORD env vars - create at bsky.app/settings/app-passwords). All credential usage and data writes are documented in the [Security & Permissions](#security--permissions) section.
 
@@ -867,26 +867,30 @@ Store your plan as `QUERY_PLAN_JSON` - you'll pass it to the script in the next 
 **IMPORTANT: Include `--x-handle={RESOLVED_HANDLE}` in the command. For comparison mode: Pass `--x-handle={TOPIC_A_HANDLE}` to the first pass, `--x-handle={TOPIC_B_HANDLE}` to the second pass, and both to the head-to-head pass. Also include `--subreddits={RESOLVED_SUBREDDITS}`, `--tiktok-hashtags={RESOLVED_HASHTAGS}`, `--tiktok-creators={RESOLVED_TIKTOK_CREATORS}`, and `--ig-creators={RESOLVED_IG_CREATORS}` from Step 0.55. Omit any flag where the value was not resolved (empty).**
 
 ```bash
-# PIN SKILL_ROOT to the public plugin cache (highest-version dir wins on upgrade).
-# DO NOT write your own path-discovery loop. The 2026-04-18 Peter Steinberger run 1
-# regression was caused by a custom discovery loop landing on ~/.openclaw/skills/last30days/
-# (a stale copy from a private-repo sync pattern). That path contains a pre-plan-007
-# engine and produces non-canonical output. This pinned resolution ignores every stale
-# copy (~/.openclaw/, ~/.agents/, ~/.codex/) and picks the plugin cache exclusively.
-SKILL_ROOT="$(ls -d "$HOME/.claude/plugins/cache/last30days-skill/last30days/"*/ 2>/dev/null | sort -V | tail -1)"
+# PIN SKILL_ROOT to an installed plugin cache first (highest-version dir wins on upgrade).
+# Prefer Codex's skill package path when installed as a Codex plugin. Keep the Claude
+# plugin-root fallback for other hosts, then fall back to a repo checkout.
+SKILL_ROOT="$(ls -d "$HOME/.codex/plugins/cache/"*/last30days/*/skills/last30days/ 2>/dev/null | sort -V | tail -1)"
 SKILL_ROOT="${SKILL_ROOT%/}"
 
-# Fallback for repo checkout / Gemini / Codex hosts where the plugin cache does not exist.
-# Only runs if the public plugin cache is missing entirely.
+# Fallback for Claude plugin cache.
 if [ -z "$SKILL_ROOT" ] || [ ! -f "$SKILL_ROOT/scripts/last30days.py" ]; then
-  for dir in "." "${CLAUDE_PLUGIN_ROOT:-}" "${GEMINI_EXTENSION_DIR:-}"; do
+  CLAUDE_PLUGIN_ROOT="$(ls -d "$HOME/.claude/plugins/cache/last30days-skill/last30days/"*/ 2>/dev/null | sort -V | tail -1)"
+  CLAUDE_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT%/}"
+  [ -n "$CLAUDE_PLUGIN_ROOT" ] && [ -f "$CLAUDE_PLUGIN_ROOT/scripts/last30days.py" ] && SKILL_ROOT="$CLAUDE_PLUGIN_ROOT"
+fi
+
+# Fallback for repo checkout / Gemini / local development hosts where the plugin cache does not exist.
+if [ -z "$SKILL_ROOT" ] || [ ! -f "$SKILL_ROOT/scripts/last30days.py" ]; then
+  for dir in "." "./skills/last30days" "${CLAUDE_PLUGIN_ROOT:-}" "${GEMINI_EXTENSION_DIR:-}"; do
     [ -n "$dir" ] && [ -f "$dir/scripts/last30days.py" ] && SKILL_ROOT="$dir" && break
   done
 fi
 
 if [ -z "${SKILL_ROOT:-}" ] || [ ! -f "$SKILL_ROOT/scripts/last30days.py" ]; then
-  echo "ERROR: Could not find scripts/last30days.py in public plugin cache or repo checkout" >&2
-  echo "Expected: $HOME/.claude/plugins/cache/last30days-skill/last30days/{VERSION}/scripts/last30days.py" >&2
+  echo "ERROR: Could not find scripts/last30days.py in Codex/Claude plugin cache or repo checkout" >&2
+  echo "Expected Codex: $HOME/.codex/plugins/cache/{MARKETPLACE}/last30days/{VERSION}/skills/last30days/scripts/last30days.py" >&2
+  echo "Expected Claude: $HOME/.claude/plugins/cache/last30days-skill/last30days/{VERSION}/scripts/last30days.py" >&2
   exit 1
 fi
 

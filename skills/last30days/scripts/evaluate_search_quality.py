@@ -22,7 +22,8 @@ from lib import env as envlib
 from lib import schema
 
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+SKILL_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 EVAL_TOPICS_FILE = REPO_ROOT / "fixtures" / "eval_topics.json"
 
 
@@ -307,7 +308,10 @@ def create_eval_env() -> dict[str, str]:
 
 
 def run_last30days(repo_dir: Path, topic: str, *, search: str, timeout_seconds: int, quick: bool, mock: bool, env: dict[str, str]) -> dict[str, Any]:
-    cmd = [sys.executable, "scripts/last30days.py", topic, "--emit=json"]
+    engine = repo_dir / "skills" / "last30days" / "scripts" / "last30days.py"
+    if not engine.exists():
+        engine = repo_dir / "scripts" / "last30days.py"
+    cmd = [sys.executable, str(engine), topic, "--emit=json"]
     if search:
         cmd.extend(["--search", search])
     if quick:
